@@ -1,9 +1,13 @@
 # osdatahub <!-- omit in toc -->
 
+> ⚠ **Updated Notice**:
+> - Maintaing a personal fork to improve the OS Download class and integrate stream proccessing into a datawarehouse for it. 
+> - I will try and keep up to date so it can be used with OS APIs in general
+
 
 > ⚠ **Important Notice**:
 > 
-> - This Python package is no longer actively maintained and will not receive updates.
+> - This Python package is no longer actively maintained by the original creators and will not receive updates according to the original repo.
 > - It may become incompatible with future [OS Data Hub APIs](https://osdatahub.os.uk/).
 
 
