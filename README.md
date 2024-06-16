@@ -2,18 +2,7 @@
 
 > ⚠ **Updated Notice**:
 > - Maintaing a personal fork to improve the OS Download class and integrate stream proccessing into a datawarehouse for it. 
-> - I will try and keep up to date so it can be used with OS APIs in general
-
-
-> ⚠ **Important Notice**:
-> 
-> - This Python package is no longer actively maintained by the original creators and will not receive updates according to the original repo.
-> - It may become incompatible with future [OS Data Hub APIs](https://osdatahub.os.uk/).
-
-
-[![GitHub issues](https://img.shields.io/github/issues/OrdnanceSurvey/osdatahub)](https://github.com/OrdnanceSurvey/osdatahub/issues)
-[![Python package](https://github.com/OrdnanceSurvey/osdatahub/actions/workflows/python-package.yml/badge.svg)](https://github.com/OrdnanceSurvey/osdatahub/actions/workflows/python-package.yml)
-<a href="https://codeclimate.com/github/dchirst/osdatahub/maintainability"><img src="https://api.codeclimate.com/v1/badges/471fd53dbb22e9e28546/maintainability" /></a>
+> - I will try and keep up to date with OS APIs in general [OS Data Hub APIs](https://osdatahub.os.uk/).
 
 
 `osdatahub` is a python package from Ordnance Survey (OS) that makes it easier to interact with OS data via
