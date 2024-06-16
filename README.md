@@ -15,6 +15,8 @@ products
 in Python. To see what data is available, you can use
 the [OS Data Hub Explorer](https://labs.os.uk/public/data-hub-explorer/).
 
+---
+
 ![The OS Logo](https://github.com/OrdnanceSurvey/osdatahub/blob/master/media/os-logo.png)
 
 ## Features <!-- omit in toc -->
