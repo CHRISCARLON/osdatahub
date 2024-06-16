@@ -176,9 +176,8 @@ class _DownloadsAPIBase(ABC):
     @classmethod
     def all_products_table(cls, **kwargs) -> list:
         """
-        Returns a list of all available products of the product type
-
-        Returns: list of dictionaries containing all products available to download
+        
+        Returns: a polars dataframe containing the same information as the all products class above
 
         """
         response = osdatahub.get(
