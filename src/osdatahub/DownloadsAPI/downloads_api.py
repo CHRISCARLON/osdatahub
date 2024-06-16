@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import time
+import polars as pl
+
 from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -166,8 +168,36 @@ class _DownloadsAPIBase(ABC):
         """
         response = osdatahub.get(
             cls._ENDPOINT, proxies=osdatahub.get_proxies())
+        
         response.raise_for_status()
+        
         return response.json()
+    
+    @classmethod
+    def all_products_table(cls, **kwargs) -> list:
+        """
+        Returns a list of all available products of the product type
+
+        Returns: list of dictionaries containing all products available to download
+
+        """
+        response = osdatahub.get(
+            cls._ENDPOINT, proxies=osdatahub.get_proxies())
+        response.raise_for_status()
+        
+        json_data = response.json()
+        
+        df = pl.DataFrame(json_data)
+        
+        df = df.rename({'name': 'dataset_name'})
+
+        df = df.unnest('thirdPartyInfo').unnest('dataProvider')
+        
+        df = df.rename(
+            {'name': 'provider_name', 'shortName': 'alias', 'homepage': 'homepage_link'}
+        )
+        
+        return df
 
     @abstractmethod
     def product_list(self):
