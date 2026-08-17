@@ -1,10 +1,7 @@
 # Changelog
 
 ## [Unreleased]
-- Added NGD `SpecialisedQuery` client with `roadlinks_by_authority_id`, resolving a Highway
-  Dedication authority id (e.g. `esu4525_4348080549878_8`) to its corresponding Road Links.
-  Results carry feature attributes only - pass `include_geometry=True` for geometry -
-  contributed by [ChrisCarlon]
+- Added NGD `SpecialisedQuery` client with `roadlinks_by_authority_id`, resolving a Highway Dedication authority id (e.g. `esu4525_4348080549878_8`) to its corresponding Road Links. Results carry feature attributes only - pass `include_geometry=True` for geometry - contributed by [ChrisCarlon]
 
 ## [1.3.4] - 2026/01/12
 - Added Async NGD Client Feature - contributed by [ChrisCarlon]

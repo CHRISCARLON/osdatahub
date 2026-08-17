@@ -1,10 +1,10 @@
 import logging
 import re
-import time
 from typing import Any, Dict, List, Union
 
 import requests
 from typeguard import typechecked
+from typing_extensions import Match, Pattern
 
 from osdatahub.NGD.models import AuthorityID, HighwayDedicationMatch
 from osdatahub.NGD.ngd_api import NGD
@@ -17,19 +17,17 @@ _PATH_LINK = "Path Link"
 _STREET = "Street"
 
 # Highway Dedication authority ids should look like this ``esu4525_4348080549878_8``.
-_AUTHORITY_ID_PATTERN = re.compile(
-    r"^(?P<prefix>[A-Za-z]+)(?P<authority_code>\d+)"
+# Something like this should fail ``ess4525_4348080549878_8``.
+_AUTHORITY_ID_PATTERN: Pattern[str] = re.compile(
+    r"^(?P<prefix>esu)(?P<authority_code>\d{4})"
     r"_(?P<esu_id>[A-Za-z0-9]+)"
     r"_(?P<dedication_code>[A-Za-z0-9]+)$"
 )
 
-# Attempts per Road Link before giving up
-_MAX_RETRIES = 3
-
-# The Road Link attributes indexed by OSID on a HighwayDedicationMatch
+# The Road Link classification attributes indexed by OSID on a HighwayDedicationMatch
 _CLASSIFICATION_FIELDS = ("roadclassification", "roadclassificationnumber")
 
-# The dedication boolean attributes copied onto a HighwayDedicationMatch
+# The dedication boolean attributes copied into a HighwayDedicationMatch
 _DEDICATION_FLAGS = (
     "publicrightofway",
     "nationalcycleroute",
@@ -65,7 +63,7 @@ def _parse_authority_id(authority_id: str) -> AuthorityID:
         parsed.authority_code  # "4525"
         parsed.esu_id          # "4348080549878"
     """
-    match = _AUTHORITY_ID_PATTERN.match(authority_id.strip())
+    match: Match[str] | None = _AUTHORITY_ID_PATTERN.match(authority_id.strip())
     if not match:
         raise ValueError(
             f"Invalid Highway Dedication authority id: {authority_id!r}. Expected the "
@@ -113,25 +111,6 @@ def _extract_network_references(feature: dict) -> Dict[str, List[str]]:
             ids.append(reference_id)
 
     return references
-
-
-def _retry_after(response: requests.Response) -> Union[float, None]:
-    """
-    Reads a ``Retry-After`` header, when the API sends an usable one.
-
-    Need this because sometimes OS rate limit the API calls.
-
-    Args:
-        response (requests.Response): The rate-limited response
-
-    Returns:
-        float: Seconds to wait, or None if the header is absent or is an HTTP-date
-            rather than a number of seconds
-    """
-    try:
-        return float(response.headers.get("Retry-After"))
-    except (AttributeError, TypeError, ValueError):
-        return None
 
 
 def _classifications_by_osid(roadlinks: List[dict]) -> Dict[str, Dict[str, Any]]:
@@ -264,8 +243,8 @@ class SpecialisedQuery:
             ValueError: If the authority id is malformed
             requests.exceptions.HTTPError: If the Highway Dedication query fails, or
                 if a Road Link fetch fails with anything other than a 404. A Road Link
-                missing from the collection is skipped with a warning; a rate limit is
-                waited out and retried, and only raised if it does not clear
+                missing from the collection is skipped with a warning; any other error,
+                including a rate limit, is raised immediately.
 
         Example::
 
@@ -278,7 +257,7 @@ class SpecialisedQuery:
             for roadlink in match.roadlinks:
                 print(roadlink["properties"]["roadclassification"])
         """
-        parsed = _parse_authority_id(authority_id)
+        parsed: AuthorityID = _parse_authority_id(authority_id)
 
         if crs and not include_geometry:
             logging.warning(
@@ -359,7 +338,7 @@ class SpecialisedQuery:
 
         for osid in osids:
             try:
-                feature = self._query_roadlink(osid, crs)
+                feature = self.roadlinks.query_feature(osid, crs=crs)
             except requests.exceptions.HTTPError as e:
                 if e.response is None or e.response.status_code != 404:
                     raise
@@ -374,38 +353,3 @@ class SpecialisedQuery:
             roadlinks.append(feature if include_geometry else _strip_geometry(feature))
 
         return roadlinks
-
-    def _query_roadlink(self, osid: str, crs: Union[str, int, None] = None) -> dict:
-        """
-        Retrieves a single Road Link, retrying if the API rate limits us
-
-        Args:
-            osid (str): A Road Link OSID
-            crs (str|int, optional): The CRS for the returned geometry
-
-        Returns:
-            dict: The Road Link GeoJSON Feature
-
-        Raises:
-            requests.exceptions.HTTPError: On a non-429 response, or if the rate
-                limit has not cleared after ``_MAX_RETRIES`` attempts
-        """
-        for attempt in range(_MAX_RETRIES - 1):
-            try:
-                return self.roadlinks.query_feature(osid, crs=crs)
-            except requests.exceptions.HTTPError as e:
-                if e.response is None or e.response.status_code != 429:
-                    raise
-
-                backoff = _retry_after(e.response) or 0.5 * (2**attempt)
-                logging.warning(
-                    "Rate limited fetching Road Link %s (attempt %d/%d), "
-                    "retrying in %ss",
-                    osid,
-                    attempt + 1,
-                    _MAX_RETRIES,
-                    backoff,
-                )
-                time.sleep(backoff)
-
-        return self.roadlinks.query_feature(osid, crs=crs)

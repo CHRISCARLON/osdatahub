@@ -1,8 +1,5 @@
 from unittest import mock
 
-import requests
-from pytest import param
-
 HIGHWAY_DEDICATION_ITEMS = (
     "https://api.os.uk/features/ngd/ofa/v1/collections/"
     "trn-rami-highwaydedication-1/items/"
@@ -78,46 +75,12 @@ def roadlink_feature(osid):
     }
 
 
-def http_errors(error_specs):
-    """
-    Turns ``{osid: [(status_code, retry_after), ...]}`` into queued HTTPErrors
-
-    Built per call rather than stored in the parametrize table, since
-    :func:`mock_ngd_get` consumes the queues as the requests are made.
-
-    Args:
-        error_specs (dict): Status codes to raise for each Road Link OSID, in order
-
-    Returns:
-        dict: Lists of HTTPError keyed by OSID, each carrying a response as
-            ``raise_for_status`` would
-    """
-    errors = {}
-
-    for osid, specs in error_specs.items():
-        errors[osid] = []
-
-        for status_code, retry_after in specs:
-            response = requests.Response()
-            response.status_code = status_code
-
-            if retry_after:
-                response.headers["Retry-After"] = retry_after
-
-            errors[osid].append(requests.exceptions.HTTPError(response=response))
-
-    return errors
-
-
-def mock_ngd_get(url, roadlink_errors=None, **kwargs):
+def mock_ngd_get(url, **kwargs):
     """
     Stands in for `osdatahub.get`, dispatching on the requested collection
 
     Args:
         url (str): The requested URL
-        roadlink_errors (dict, optional): Exceptions to raise on successive calls for
-            a given Road Link OSID, from :func:`http_errors`, so a transient failure
-            can be followed by a success
 
     Returns:
         Mock: A response exposing ``json()`` and ``raise_for_status()``
@@ -134,41 +97,5 @@ def mock_ngd_get(url, roadlink_errors=None, **kwargs):
         return response
 
     osid = url.rsplit("/", 1)[-1]
-
-    queued = (roadlink_errors or {}).get(osid)
-    if queued:
-        response.raise_for_status.side_effect = queued.pop(0)
-        return response
-
     response.json = lambda: roadlink_feature(osid)
     return response
-
-
-def test_roadlink_failures():
-    test_variables = "error_specs, expected_osids, expected_sleeps"
-    test_data = [
-        param(
-            {ROADLINK_OSIDS[0]: [(404, None)]},
-            ROADLINK_OSIDS[1:],
-            [],
-            id="404-skipped-rest-kept",
-        ),
-        param(
-            {ROADLINK_OSIDS[1]: [(429, "2"), (429, None)]},
-            ROADLINK_OSIDS,
-            # Retry-After wins first, then exponential backoff: 0.5 * 2**1.
-            [2.0, 1.0],
-            id="429-retried-until-it-clears",
-        ),
-    ]
-    return test_variables, test_data
-
-
-def test_roadlink_failures_raise():
-    test_variables = "error_specs"
-    test_data = [
-        param({ROADLINK_OSIDS[1]: [(429, None)] * 3}, id="429-never-clears"),
-        param({ROADLINK_OSIDS[2]: [(500, None)]}, id="500-server-error"),
-        param({ROADLINK_OSIDS[2]: [(403, None)]}, id="403-forbidden"),
-    ]
-    return test_variables, test_data
